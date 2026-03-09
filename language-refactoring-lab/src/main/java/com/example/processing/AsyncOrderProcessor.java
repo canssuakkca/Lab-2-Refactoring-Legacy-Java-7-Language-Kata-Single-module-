@@ -1,40 +1,36 @@
 package com.example.processing;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 import com.example.model.Order;
 import com.example.pricing.DiscountEngine;
 
 public class AsyncOrderProcessor {
 
+    private final ExecutorService pool = Executors.newFixedThreadPool(2);
+
     public List<Order> process(List<Order> orders) {
-        ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            List<Future<Order>> futures = new ArrayList<Future<Order>>();
-            for (int i = 0; i < orders.size(); i++) {
-                final Order o = orders.get(i);
-                futures.add(pool.submit(new Callable<Order>() {
-                    public Order call() throws Exception {
+            List<Future<Order>> futures = orders.stream()
+                    .map(order -> pool.submit(() -> {
                         DiscountEngine engine = new DiscountEngine();
-                        long disc = engine.totalDiscountCents(o);
-                        if (disc > 0) o.setStatus(o.getStatus() + "_DISC");
-                        return o;
-                    }
-                }));
-            }
-            List<Order> out = new ArrayList<Order>();
-            for (int i = 0; i < futures.size(); i++) {
-                try {
-                    out.add(futures.get(i).get());
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } catch (ExecutionException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            return out;
+                        long disc = engine.totalDiscountCents(order);
+                        if (disc > 0) order.setStatus(order.getStatus() + "_DISC");
+                        return order;
+                    }))
+                    .collect(Collectors.toList());
+
+            return futures.stream()
+                    .map(f -> {
+                        try {
+                            return f.get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .collect(Collectors.toList());
         } finally {
             pool.shutdown();
         }
