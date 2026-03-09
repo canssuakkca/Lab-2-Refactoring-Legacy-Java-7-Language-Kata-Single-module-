@@ -60,4 +60,5 @@ public class OrderItem {
         result = 31 * result + Long.hashCode(unitPriceCents);
         return result;
     }
+    
 }
