@@ -2,30 +2,25 @@ package com.example.pricing;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import com.example.model.Order;
 
 public class DiscountEngine {
-    private final List<DiscountPolicy> policies = new ArrayList<DiscountPolicy>();
+
+    private final List<DiscountPolicy> policies = new ArrayList<>();
 
     public DiscountEngine() {
-        policies.add(new DiscountPolicy() {
-            public long discountCents(Order order) {
-                if (order == null || order.getCustomer() == null) return 0;
-                if ("GOLD".equals(order.getCustomer().getTier())) {
-                    return (long) (order.totalCents() * 0.10);
-                }
-                return 0;
+        policies.add(order -> {
+            if (order != null && order.getCustomer() != null
+                    && "GOLD".equalsIgnoreCase(order.getCustomer().getTier())) {
+                return (long)(order.totalCents() * 0.10);
             }
-            public String name() { return "GOLD_10PCT"; }
+            return 0L;
         });
     }
 
     public long totalDiscountCents(Order order) {
-        long sum = 0;
-        for (int i = 0; i < policies.size(); i++) {
-            sum += policies.get(i).discountCents(order);
-        }
-        return sum;
+        return policies.stream()
+                .mapToLong(p -> p.discountCents(order))
+                .sum();
     }
 }
