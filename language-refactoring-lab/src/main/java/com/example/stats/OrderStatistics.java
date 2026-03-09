@@ -1,31 +1,25 @@
 package com.example.stats;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import com.example.model.Order;
 import com.example.pricing.DiscountEngine;
 
 public class OrderStatistics {
 
     public Map<String, Object> compute(List<Order> orders) {
-        Map<String, Object> stats = new HashMap<String, Object>();
-
-        int count = 0;
-        long totalRevenue = 0;
-
         DiscountEngine engine = new DiscountEngine();
 
-        for (int i = 0; i < orders.size(); i++) {
-            Order o = orders.get(i);
-            if (o == null) continue;
-            count++;
-            totalRevenue += (o.totalCents() - engine.totalDiscountCents(o));
-        }
+        long totalRevenue = orders.stream()
+                .filter(o -> o != null)
+                .mapToLong(o -> o.totalCents() - engine.totalDiscountCents(o))
+                .sum();
 
-        stats.put("count", Integer.valueOf(count));
-        stats.put("totalRevenue", Long.valueOf(totalRevenue));
-        return stats;
+        int count = (int) orders.stream().filter(o -> o != null).count();
+
+        return Map.of(
+                "count", count,
+                "totalRevenue", totalRevenue
+        );
     }
 }
